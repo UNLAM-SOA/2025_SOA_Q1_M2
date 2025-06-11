@@ -1,7 +1,6 @@
 #include <WiFiClientSecure.h>
 #include <WiFi.h>
 #include "PubSubClient.h"
-#include <time.h>
 
 #define LIGHT_SENSOR_PIN 32
 #define MOTOR_FORWARD_PIN 25
@@ -30,29 +29,30 @@ const char * ssid = "SO Avanzados";
 const char * password = "SOA.2019";
 
 // CONFIG MQTT
-const char * mqtt_server = "192.168.30.116";
+const char * mqtt_server = "192.168.1.65";
 const int port = 8883;
-const char * ca_cert = R"EOF(
------BEGIN CERTIFICATE-----
-MIIDDzCCAfegAwIBAgIUfCFnZE8rjCTk2KOTZ2dZldipUAUwDQYJKoZIhvcNAQEL
-BQAwFzEVMBMGA1UEAwwMMTkyLjE2OC4xLjY1MB4XDTI1MDYwNjAxMDAzN1oXDTI2
-MDYwNjAxMDAzN1owFzEVMBMGA1UEAwwMMTkyLjE2OC4xLjY1MIIBIjANBgkqhkiG
-9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1YjT0NAqHjgy/jtB8rZwzKv4x/woS8eoeHOL
-RL5Y+bEYzNVCblPSaCtf1h2RlcH5TKkNhHxKNapQhp1/sstffcVOM3p8Kwd8ymcJ
-y9LuAOBl1npmOoiDygrF1rR836vW1kpHH42KLio48dIjHOg42gz94ghToRITBvdB
-7hfJk9r5Rcs6jcwyHC90si+2VAIIXmgwM1gz3k7UOQyBhdgjJAeMF5O2S13bRPWd
-/CTo2raUiRtAXaZCY6OWYATetCk95LNOu0sbTStbKtSKpcya2lc97uzlPhfEzu+f
-fJqB87YG89SRJVshdA+Nr8Eafo1VmuAcDsPNerRhc7tuBRNWJQIDAQABo1MwUTAd
-BgNVHQ4EFgQUsJxhf3Y9RSHYOuPWDI2/z/8fKxgwHwYDVR0jBBgwFoAUsJxhf3Y9
-RSHYOuPWDI2/z/8fKxgwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOC
-AQEARSgqxlt7UEwbHskQGZVmqz8YGUIZEJzmNwAy5wMUSqQia5f723XNJzIHOJFd
-b3rgzlTkSaOKyEwIkOBcgrOatj9JnYAFV+Mu64HkxY8pUpWJvRL+gnVbEtYcSfz8
-stL/raOHHmtpJjk+0XcbsN7YWReQBOXsPMbdpdI/B3NwJgMhIa9X0w4MlWP1CxiL
-Rqv0sz7QSmNv8MoaljpfuZHILfXGgCmjBRbWxFOdUfu5ddwEx/Nj+craaDdulX9Y
-5N+B4dm5QPVtD9rXj3oyuZn0j9TGkJkd8Yw13DUyFG8+eBenn5zcy0zJ1brBgWdt
-M8Lvn2+rHCRLRSLycbL1QGDQ2w==
------END CERTIFICATE-----
-)EOF";
+
+const char * ca_cert = \
+"-----BEGIN CERTIFICATE-----\n" \
+"MIIDETCCAfmgAwIBAgIUNys/tlx3SPmYdHp9gKpAWCBzxn8wDQYJKoZIhvcNAQEL\n" \
+"BQAwGDEWMBQGA1UEAwwNTXlNb3NxdWl0dG9DQTAeFw0yNTA2MTEyMTE3NDNaFw0z\n" \
+"NTA2MDkyMTE3NDNaMBgxFjAUBgNVBAMMDU15TW9zcXVpdHRvQ0EwggEiMA0GCSqG\n" \
+"SIb3DQEBAQUAA4IBDwAwggEKAoIBAQCy2Dc80OqyNJmkqtsmA1BSbmK5lbSAjfBJ\n" \
+"e8+2pdz/Uyh7TKYVYeHa+BLfZJziVCr8l5uOTgYdDU2YidsOS3KxNjikIxJR9mIR\n" \
+"xQ34bhnftMwsmtJT5fKIsh6yn+AUQHsnJLjo6rMO0BXWmC7UhUOo9wAtK0AB4Vv4\n" \
+"OTID50+eqC8h8j3ALFZ2RC1gxLORDWfYksKAKDSKQwIOgMI+OSWm9u68Mwm7s+ZJ\n" \
+"vxpwpooABga0sDKsLDHffoJdNRdAVB6LjmmwsL7E/PMP7IiELM3YPT1M6ROIGhgN\n" \
+"uxRJ/R2oNW0mDf0fPVvsGyB690KSY7Ue8bULtNZ6bHfPK4x+9rH5AgMBAAGjUzBR\n" \
+"MB0GA1UdDgQWBBSJ/405EN2BpEDzJ4d6o2rStu3m2zAfBgNVHSMEGDAWgBSJ/405\n" \
+"EN2BpEDzJ4d6o2rStu3m2zAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUA\n" \
+"A4IBAQA9bMN6t9F8tC68vmuNtA1ysrMZba8K6Zf18XFwM3O4TeOUrb93R1Tg47nU\n" \
+"XuWMkduRY1ucQ4Zpmm/N6n3sh4H+gSVQNiuygdRTpA3jcegrUSgIBHHu4xKPXrbi\n" \
+"NosHMJm+lfgt6txN5YJwwDzNKWoz3nIZvEVnDGtnlPJAKxf095Er4jbGeg/h4n1X\n" \
+"vIYq2x65vDSQ8H3GtAFTC8YGp4fiWUCFAWF48ZpO+DQleWpuWrSkKa5drk0L2696\n" \
+"J4gP7rnepoQlqTC9ARPLqsHJdn/LPLzBFa9euOw8MWGx4hmg6aQcteW7v8rblVkX\n" \
+"J8Bml5xJk3MfnoBecqHGEEKaDhQI\n" \
+"-----END CERTIFICATE-----\n";
+
 const char * user_name = "m2";
 const char * user_pass = "SOA.2019";
 const char * clientId = "mqttx_5a09e62a";
@@ -178,10 +178,11 @@ void setup() {
 
   // MQTT y WIFI
   wifiConnect();
-  // espClient.setCACert(ca_cert);
-  espClient.setInsecure();
+  espClient.setCACert(ca_cert);
+
   client.setServer(mqtt_server, port);
   client.setCallback(callback);
+
 }
 
 void loop() {
@@ -311,14 +312,9 @@ void cmdGoDown() {
 }
 
 void cmdPause() {
-//  if(currentConfig == MANUAL) {
   Event evt = EVT_PAUSE;
   xQueueSend(eventQueue, &evt, TIME_OUT);
   Serial.println("La cortina se a detenido");
-//  }
-//  else {
-//    Serial.println("No se puede detener la cortina en modo automatica");
-//  }
 }
 
 void cmdManual() {
