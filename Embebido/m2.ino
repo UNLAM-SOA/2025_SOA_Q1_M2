@@ -30,7 +30,7 @@ const char * ssid = "SO Avanzados";
 const char * password = "SOA.2019";
 
 // CONFIG MQTT
-const char * mqtt_server = "192.168.1.65";
+const char * mqtt_server = "192.168.30.116";
 const int port = 8883;
 const char * ca_cert = R"EOF(
 -----BEGIN CERTIFICATE-----
@@ -140,12 +140,12 @@ void mqttTask(void * p);
 typedef void (*Function)();
 
 Function transitionMatrix[STATE_QUANTITY][EVENT_QUANTITY] = {
-  //                  EVT_GO_UP EVT_GO_DOWN   EVT_PAUSE   EVT_FC_END    EVT_FC_START EVT_MGO_UP  EVT_MGO_DOWN  EVT_CHANGE_MODE_MANUAL EVT_CHANGE_MODE_AUTO
-  /* STOPPED */     { goUp,     goDown,       noChange,   noChange,     noChange,    mGoUp,      mGoDown,      changeModeManual,      changeModeAuto },
-  /* FORWARDING */  { noChange, goDown,       noChange,   pauseMotor,   noChange,    noChange,   noChange,     changeModeManual,      noChange       },
-  /* BACKWARDING */ { goUp,     noChange,     noChange,   noChange,     pauseMotor,  noChange,   noChange,     changeModeManual,      noChange       },
-  /* MFORWARDING */ { noChange, noChange,     pauseMotor, pauseMotor,   noChange,    noChange,   mGoDown,      noChange,              changeModeAuto },
-  /* MBACKWARDING */{ noChange, noChange,     pauseMotor, noChange,     pauseMotor,  mGoUp,      noChange,     noChange,              changeModeAuto }
+  //                  EVT_GO_UP EVT_GO_DOWN   EVT_PAUSE           EVT_FC_END    EVT_FC_START EVT_MGO_UP  EVT_MGO_DOWN  EVT_CHANGE_MODE_MANUAL EVT_CHANGE_MODE_AUTO
+  /* STOPPED */     { goUp,     goDown,       noChange,           noChange,     noChange,    mGoUp,      mGoDown,      changeModeManual,      changeModeAuto },
+  /* FORWARDING */  { noChange, goDown,       changeModeManual,   pauseMotor,   noChange,    noChange,   noChange,     changeModeManual,      noChange       },
+  /* BACKWARDING */ { goUp,     noChange,     changeModeManual,   noChange,     pauseMotor,  noChange,   noChange,     changeModeManual,      noChange       },
+  /* MFORWARDING */ { noChange, noChange,     pauseMotor,         pauseMotor,   noChange,    noChange,   mGoDown,      noChange,              changeModeAuto },
+  /* MBACKWARDING */{ noChange, noChange,     pauseMotor,         noChange,     pauseMotor,  mGoUp,      noChange,     noChange,              changeModeAuto }
  };
 
 //                                   OPEN     CLOSE      STOP      MODE_MANUAL MODE_AUTO INVALID_CMD      
@@ -178,8 +178,8 @@ void setup() {
 
   // MQTT y WIFI
   wifiConnect();
-  espClient.setCACert(ca_cert);
-  // espClient.setInsecure();
+  // espClient.setCACert(ca_cert);
+  espClient.setInsecure();
   client.setServer(mqtt_server, port);
   client.setCallback(callback);
 }
@@ -311,14 +311,14 @@ void cmdGoDown() {
 }
 
 void cmdPause() {
-  if(currentConfig == MANUAL) {
-    Event evt = EVT_PAUSE;
-    xQueueSend(eventQueue, &evt, TIME_OUT);
-    Serial.println("La cortina se a detenido");
-  }
-  else {
-    Serial.println("No se puede detener la cortina en modo automatica");
-  }
+//  if(currentConfig == MANUAL) {
+  Event evt = EVT_PAUSE;
+  xQueueSend(eventQueue, &evt, TIME_OUT);
+  Serial.println("La cortina se a detenido");
+//  }
+//  else {
+//    Serial.println("No se puede detener la cortina en modo automatica");
+//  }
 }
 
 void cmdManual() {
@@ -346,6 +346,7 @@ void cmdAuto() {
 void cmdInvalid() {
   Serial.println("Comando no reconocido");
 }
+
 
 // TAREAS QUE LEEN SENSORES
 void lightSensorTask(void *p) {
@@ -405,6 +406,7 @@ void mqttTask(void *p) {
   }
 }
 
+
 // FUNCIONES MQTT
 void wifiConnect() {
   Serial.println("+ Conectando a WiFi");
@@ -442,6 +444,6 @@ void callback(char * topic, byte * message, unsigned int length) {
 
   Serial.printf("+ Mensaje recibido: %s\n", msg);
 
-  // Cmd cmd = cmdMapper(String(msg));
-  // cmdActions[cmd]();
+  Cmd cmd = cmdMapper(String(msg));
+  cmdActions[cmd]();
 }
