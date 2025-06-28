@@ -56,13 +56,13 @@ public class ConnectActivity extends AppCompatActivity {
         setContentView(R.layout.activity_connect);
 
         // Vincular componentes
-        inputBroker = findViewById(R.id.input_broker);
-        inputPort = findViewById(R.id.input_port);
-        inputClientId = findViewById(R.id.input_client_id);
-        inputUser = findViewById(R.id.input_user);
-        inputPassword = findViewById(R.id.input_password);
-        textStatus = findViewById(R.id.text_status);
-        btnConnect = findViewById(R.id.btn_connect);
+        inputBroker = findViewById(R.id.inputBroker);
+        inputPort = findViewById(R.id.inputPort);
+        inputClientId = findViewById(R.id.inputClientId);
+        inputUser = findViewById(R.id.inputUser);
+        inputPassword = findViewById(R.id.inputPassword);
+        textStatus = findViewById(R.id.textStatus);
+        btnConnect = findViewById(R.id.btnConnect);
 
         btnConnect.setOnClickListener(new View.OnClickListener() {
             @Override
