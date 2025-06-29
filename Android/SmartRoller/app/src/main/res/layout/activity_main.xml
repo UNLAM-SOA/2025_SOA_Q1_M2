@@ -4,8 +4,20 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center"
-    android:padding="16dp">
+    android:gravity="center_horizontal"
+    android:paddingTop="60dp"
+    >
+
+    <ImageView
+        android:id="@+id/imgTitle"
+        android:layout_width="200dp"
+        android:layout_height="100dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="20dp"
+        android:adjustViewBounds="true"
+        android:contentDescription="Smart Roller Title"
+        android:scaleType="fitCenter"
+        android:src="@drawable/smartroller_tittle" />
 
     <!-- Fila superior con botones Horarios y Conectar -->
     <LinearLayout
@@ -45,7 +57,7 @@
             android:id="@+id/txtMode"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Manual"
+            android:text="----"
             android:textSize="18sp"
             android:layout_marginStart="8dp" />
     </LinearLayout>
@@ -67,7 +79,7 @@
             android:id="@+id/txtState"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Abierta"
+            android:text="----"
             android:textSize="18sp"
             android:layout_marginStart="8dp" />
     </LinearLayout>
@@ -89,7 +101,7 @@
             android:id="@+id/txtLight"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="123456"
+            android:text="----"
             android:textSize="18sp"
             android:layout_marginStart="8dp" />
     </LinearLayout>

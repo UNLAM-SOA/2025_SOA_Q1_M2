@@ -23,7 +23,7 @@ public class ConnectActivity extends AppCompatActivity {
         inputClientId = findViewById(R.id.inputClientId);
         inputUser = findViewById(R.id.inputUser);
         inputPassword = findViewById(R.id.inputPassword);
-        textStatus = findViewById(R.id.textStatus);  // Asegurate que el id sea correcto
+        textStatus = findViewById(R.id.textStatus);
         btnConnect = findViewById(R.id.btnConnect);
 
         btnConnect.setOnClickListener(new View.OnClickListener() {
@@ -53,9 +53,14 @@ public class ConnectActivity extends AppCompatActivity {
                 textStatus.setTextColor(getResources().getColor(android.R.color.holo_orange_dark));
 
                 Toast.makeText(ConnectActivity.this, "Iniciando conexión...", Toast.LENGTH_SHORT).show();
-                Intent mainIntent = new Intent(ConnectActivity.this, MainActivity.class);
-                startActivity(mainIntent);
-                finish();
+                if(MqttService.isRunning){
+                    Intent mainIntent = new Intent(ConnectActivity.this, MainActivity.class);
+                    startActivity(mainIntent);
+                    finish();
+                }
+                else {
+                    Toast.makeText(ConnectActivity.this, "No se a podido conectar al broker", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
