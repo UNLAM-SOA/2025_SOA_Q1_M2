@@ -110,7 +110,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         cmButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                textMode.setText(textMode.getText()=="Manual" ? "Automatico" : "Manual");
+                String mode = textMode.getText().toString().toLowerCase();
+                mode = mode.equals("manual") ? "auto" : "manual";
+                mqttService.publishMessage("/persiana", "cm " + mode);
             }
         });
 
@@ -118,7 +120,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 if (isBound && mqttService != null) {
-                    mqttService.publishMessage("/persiana", "subir");
+                    mqttService.publishMessage("/persiana", "abrir");
                 }
             }
         });
@@ -127,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 if (isBound && mqttService != null) {
-                    mqttService.publishMessage("/persiana", "bajar");
+                    mqttService.publishMessage("/persiana", "cerrar");
                 }
             }
         });
