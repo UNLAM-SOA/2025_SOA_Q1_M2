@@ -3,8 +3,8 @@
 #include "PubSubClient.h"
 
 #define LIGHT_SENSOR_PIN 32
-#define MOTOR_FORWARD_PIN 25
-#define MOTOR_BACKWARD_PIN 26
+#define MOTOR_FORWARD_PIN 26
+#define MOTOR_BACKWARD_PIN 25
 #define MOTOR_SPEED_PIN 27
 #define LED_PIN 18
 #define FC_START_PIN 15
@@ -29,7 +29,7 @@ const char * ssid = "SO Avanzados";
 const char * password = "SOA.2019";
 
 // CONFIG MQTT
-const char * mqtt_server = "192.168.1.65";
+const char * mqtt_server = "192.168.30.116";
 const int port = 8883;
 
 const char * ca_cert = \
@@ -55,7 +55,7 @@ const char * ca_cert = \
 
 const char * user_name = "m2";
 const char * user_pass = "SOA.2019";
-const char * clientId = "mqttx_5a09e62a";
+const char * clientId = "m2ino";
 
 // TOPICOS MQTT
 const char * topic_persiana = "/persiana";
@@ -158,7 +158,7 @@ QueueHandle_t eventQueue;
 
 void setup() {
   Serial.begin(SERIAL_MONITOR);
-  Serial.print("SISOP AV UNLAM M2 Q1 2025 - Cortina Roller 1");
+  Serial.println("SISOP AV UNLAM M2 Q1 2025 - Cortina Roller 1");
 
   pinMode(MOTOR_FORWARD_PIN, OUTPUT);
   pinMode(MOTOR_BACKWARD_PIN, OUTPUT);
@@ -207,7 +207,7 @@ void getEvent() {
 // FUNCIONES PARA ACTUALIZAR Y LEER LOS PINES
 boolean isLigthOn() {
   int lightValue = analogRead(LIGHT_SENSOR_PIN);
-  return lightValue <= LIGHT_THRESHOLD;
+  return lightValue >= LIGHT_THRESHOLD;
 }
 
 void dcMotorForward() {
@@ -292,7 +292,7 @@ void cmdGoUp() {
       Serial.println("Abriendo cortina");
     }
     else {
-      Serial.print("La cortina ya esta completamente abierta");
+      Serial.println("La cortina ya esta completamente abierta");
     }
   }
 }
@@ -306,7 +306,7 @@ void cmdGoDown() {
       Serial.println("Cerrando cortina");
     }
     else {
-      Serial.print("La cortina ya esta completamente cerrada");
+      Serial.println("La cortina ya esta completamente cerrada");
     }  
   }
 }
