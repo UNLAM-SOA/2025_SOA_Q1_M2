@@ -1,8 +1,10 @@
 package com.app.smartroller;
 
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -10,6 +12,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -22,6 +25,9 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
+    TextView textState;
+    TextView textMode;
+    TextView textLight;
 
     private SensorManager sensorManager;
     private Sensor accelerometer;
@@ -43,6 +49,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         @Override
         public void onServiceDisconnected(ComponentName name) {
             isBound = false;
+        }
+    };
+
+    private final BroadcastReceiver mqttReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String topic = intent.getStringExtra("topic");
+            String state = intent.getStringExtra("estado");
+            String mode = intent.getStringExtra("modo");
+            int light = intent.getIntExtra("luz", -1);
+            Log.d("MQTT Receiver", state + " " + mode + " " + light);
+            updateUI(state,mode,light);
         }
     };
 
@@ -78,9 +96,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Button downButton = findViewById(R.id.btndown);
         Button cmButton = findViewById(R.id.btnCm);
         Button connectButton = findViewById(R.id.btnConnect);
-        TextView textState = findViewById(R.id.txtState);
-        TextView modeValue = findViewById(R.id.txtMode);
-        TextView lightText = findViewById(R.id.txtLight);
+        textState = findViewById(R.id.txtState);
+        textMode = findViewById(R.id.txtMode);
+        textLight = findViewById(R.id.txtLight);
 
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -92,7 +110,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         cmButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                modeValue.setText(modeValue.getText()=="Manual" ? "Automatico" : "Manual");
+                textMode.setText(textMode.getText()=="Manual" ? "Automatico" : "Manual");
             }
         });
 
@@ -136,6 +154,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onResume() {
         super.onResume();
+        registerReceiver(mqttReceiver, new IntentFilter("MQTT_MESSAGE"), Context.RECEIVER_NOT_EXPORTED);
         if (accelerometer != null)
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
     }
@@ -143,6 +162,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onPause() {
         super.onPause();
+        unregisterReceiver(mqttReceiver);
         sensorManager.unregisterListener(this);
     }
 
@@ -178,4 +198,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+    
+    private void updateUI(String state, String mode, Integer light) {
+
+            textState.setText(state);
+            textLight.setText(""+light);
+            textMode.setText(mode);
+
+    }
 }

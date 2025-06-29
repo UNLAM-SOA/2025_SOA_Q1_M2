@@ -17,6 +17,8 @@ import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class MqttService extends Service {
     private MqttAndroidClient client;
@@ -64,14 +66,12 @@ public class MqttService extends Service {
 
     private void connectToMqtt(String broker, String port, String clientId, String user, String password) {
         try {
-            //String serverUri = "ssl://" + broker + ":" + port; // con ssl
-            String serverUri = "tcp://" + broker + ":" + port; // sin sll
+            String serverUri = "tcp://" + broker + ":" + port;
             client = new MqttAndroidClient(getApplicationContext(), serverUri, clientId);
             MqttConnectOptions options = new MqttConnectOptions();
             options.setCleanSession(true);
             options.setAutomaticReconnect(true);
 
-            //options.setSocketFactory(SSLUtils.getSocketFactory(getApplicationContext()));
             if (!user.isEmpty()) {
                 options.setUserName(user);
                 options.setPassword(password.toCharArray());
@@ -80,7 +80,7 @@ public class MqttService extends Service {
             client.connect(options, null, new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
-                    Log.e("MQTT", "Conectado al broker");
+                    Log.d("MQTT", "Conectado al broker");
                     subscribeToTopic("/app_persiana");
                 }
 
@@ -97,7 +97,8 @@ public class MqttService extends Service {
     private void subscribeToTopic(String topic) {
         try {
             client.subscribe(topic, 1, (topic1, message) -> {
-                Log.d("MQTT", "Mensaje recibido: " + new String(message.getPayload()));
+                Intent intent = buildIntentMqttMessaje(topic1, new String(message.getPayload()));
+                sendBroadcast(intent);
             });
         } catch (MqttException e) {
             e.printStackTrace();
@@ -140,5 +141,28 @@ public class MqttService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return binder;
+    }
+
+    private Intent buildIntentMqttMessaje(String topic, String payload) {
+        Intent intent = new Intent("MQTT_MESSAGE");
+        intent.putExtra("topic", topic);
+
+        try {
+            JSONObject json = new JSONObject(payload);
+
+            String state = json.optString("estado", "");
+            String mode = json.optString("modo", "");
+            int light = json.optInt("luz", -1);
+
+            intent.putExtra("estado", state);
+            intent.putExtra("modo", mode);
+            intent.putExtra("luz", light);
+
+        } catch (JSONException e) {
+            Log.e("MQTT", "JSON inválido: " + payload, e);
+            intent.putExtra("error", "Formato JSON inválido");
+        }
+
+        return intent;
     }
 }

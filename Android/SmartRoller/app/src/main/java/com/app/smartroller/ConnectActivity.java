@@ -47,7 +47,6 @@ public class ConnectActivity extends AppCompatActivity {
                 serviceIntent.putExtra("clientId", clientId);
                 serviceIntent.putExtra("user", user);
                 serviceIntent.putExtra("password", password);
-
                 ContextCompat.startForegroundService(ConnectActivity.this, serviceIntent);
 
                 textStatus.setText("Estado: Conectando...");
