@@ -1,6 +1,9 @@
 package com.app.smartroller;
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.*;
@@ -12,6 +15,24 @@ public class ConnectActivity extends AppCompatActivity {
     EditText inputBroker, inputPort, inputClientId, inputUser, inputPassword;
     TextView textStatus;
     Button btnConnect;
+
+    private BroadcastReceiver mqttConnectionReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String status = intent.getStringExtra("status");
+
+            if ("connected".equals(status)) {
+                Intent mainIntent = new Intent(ConnectActivity.this, MainActivity.class);
+                startActivity(mainIntent);
+                finish();
+            } else if ("failed".equals(status)) {
+                String error = intent.getStringExtra("error");
+                Toast.makeText(ConnectActivity.this, "Error al conectar: " + error, Toast.LENGTH_LONG).show();
+                textStatus.setText("Estado: Desconectado");
+                textStatus.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,17 +72,19 @@ public class ConnectActivity extends AppCompatActivity {
 
                 textStatus.setText("Estado: Conectando...");
                 textStatus.setTextColor(getResources().getColor(android.R.color.holo_orange_dark));
-
-                Toast.makeText(ConnectActivity.this, "Iniciando conexión...", Toast.LENGTH_SHORT).show();
-                if(MqttService.isRunning){
-                    Intent mainIntent = new Intent(ConnectActivity.this, MainActivity.class);
-                    startActivity(mainIntent);
-                    finish();
-                }
-                else {
-                    Toast.makeText(ConnectActivity.this, "No se a podido conectar al broker", Toast.LENGTH_SHORT).show();
-                }
             }
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(mqttConnectionReceiver, new IntentFilter("MQTT_CONNECTION_STATUS"), RECEIVER_NOT_EXPORTED);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(mqttConnectionReceiver);
     }
 }

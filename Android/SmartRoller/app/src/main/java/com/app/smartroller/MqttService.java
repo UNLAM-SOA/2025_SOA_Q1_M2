@@ -82,11 +82,20 @@ public class MqttService extends Service {
                 public void onSuccess(IMqttToken asyncActionToken) {
                     Log.d("MQTT", "Conectado al broker");
                     subscribeToTopic("/app_persiana");
+
+                    Intent successIntent = new Intent("MQTT_CONNECTION_STATUS");
+                    successIntent.putExtra("status", "connected");
+                    sendBroadcast(successIntent);
                 }
 
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                     Log.e("MQTT", "Error al conectar", exception);
+
+                    Intent failureIntent = new Intent("MQTT_CONNECTION_STATUS");
+                    failureIntent.putExtra("status", "failed");
+                    failureIntent.putExtra("error", exception.getMessage());
+                    sendBroadcast(failureIntent);
                 }
             });
         } catch (Exception e) {
