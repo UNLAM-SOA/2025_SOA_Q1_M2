@@ -96,6 +96,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Button downButton = findViewById(R.id.btndown);
         Button cmButton = findViewById(R.id.btnCm);
         Button connectButton = findViewById(R.id.btnConnect);
+        Button timersButton = findViewById(R.id.btnTimer);
         textState = findViewById(R.id.txtState);
         textMode = findViewById(R.id.txtMode);
         textLight = findViewById(R.id.txtLight);
@@ -147,6 +148,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(MainActivity.this, ConnectActivity.class);
+                startActivity(intent);
+            }
+        });
+
+        timersButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, ScheduleActivity.class);
                 startActivity(intent);
             }
         });

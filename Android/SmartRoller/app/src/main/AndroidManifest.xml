@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.app.smartroller">
@@ -23,15 +24,15 @@
         android:theme="@style/Theme.SmartRoller"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
-
+        <activity
+            android:name=".ScheduleActivity"
+            android:exported="false" />
         <!-- Servicio propio -->
         <service
             android:name=".MqttService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
-
-        <!-- Servicio de Paho MQTT: solo una declaración, con replace para evitar conflicto -->
+            android:foregroundServiceType="dataSync" /> <!-- Servicio de Paho MQTT: solo una declaración, con replace para evitar conflicto -->
         <service
             android:name="org.eclipse.paho.android.service.MqttService"
             android:exported="false"
@@ -45,8 +46,11 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <receiver android:name=".MqttAlarmReceiver" android:exported="true" />
     </application>
+
 </manifest>

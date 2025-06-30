@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">SmartRoller</string>
+
+    <string-array name="actions_array">
+        <item>Abrir</item>
+        <item>Cerrar</item>
+    </string-array>
 </resources>

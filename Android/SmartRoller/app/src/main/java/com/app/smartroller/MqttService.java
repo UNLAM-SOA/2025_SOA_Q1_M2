@@ -80,6 +80,14 @@ public class MqttService extends Service {
 
         startForeground(1, notification);
 
+        String action = intent.getStringExtra("action");
+        if ("publish".equals(action)) {
+            String topic = intent.getStringExtra("topic");
+            String payload = intent.getStringExtra("payload");
+            publishMessage(topic, payload);
+            return START_NOT_STICKY;
+        }
+
         String broker = intent.getStringExtra("broker");
         String port = intent.getStringExtra("port");
         String clientId = intent.getStringExtra("clientId");
