@@ -12,7 +12,6 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -55,11 +54,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private final BroadcastReceiver mqttReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            String topic = intent.getStringExtra("topic");
             String state = intent.getStringExtra("estado");
             String mode = intent.getStringExtra("modo");
             int light = intent.getIntExtra("luz", -1);
-            Log.d("MQTT Receiver", state + " " + mode + " " + light);
             updateUI(state,mode,light);
         }
     };
@@ -112,8 +109,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 String mode = textMode.getText().toString().toLowerCase();
-                mode = mode.equals("manual") ? "auto" : "manual";
-                mqttService.publishMessage("/persiana", "cm " + mode);
+                mode = mode.equals("manual") ? MqttService.PAYLOAD_AUTO : MqttService.PAYLOAD_MANUAL;
+                mqttService.publishMessage(MqttService.TOPIC_PERSIANA, "cm " + mode);
             }
         });
 
@@ -121,7 +118,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 if (isBound && mqttService != null) {
-                    mqttService.publishMessage("/persiana", "abrir");
+                    mqttService.publishMessage(MqttService.TOPIC_PERSIANA, MqttService.PAYLOAD_OPEN);
                 }
             }
         });
@@ -130,7 +127,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 if (isBound && mqttService != null) {
-                    mqttService.publishMessage("/persiana", "cerrar");
+                    mqttService.publishMessage(MqttService.TOPIC_PERSIANA, MqttService.PAYLOAD_CLOSE);
                 }
             }
         });
@@ -139,7 +136,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 if (isBound && mqttService != null) {
-                    mqttService.publishMessage("/persiana", "pausar");
+                    mqttService.publishMessage(MqttService.TOPIC_PERSIANA, MqttService.PAYLOAD_PAUSE);
                 }
             }
         });
@@ -165,7 +162,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onResume() {
         super.onResume();
-        registerReceiver(mqttReceiver, new IntentFilter("MQTT_MESSAGE"), Context.RECEIVER_NOT_EXPORTED);
+        registerReceiver(mqttReceiver, new IntentFilter(MqttService.MQTT_MESSAGE_RECEIVED), Context.RECEIVER_NOT_EXPORTED);
         if (accelerometer != null)
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
     }
@@ -188,9 +185,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             float z = event.values[2];
             float speed = Math.abs(x + y + z - lastX - lastY - lastZ) / diffTime * 10000;
             if (speed > SHAKE_THRESHOLD) {
-                // 🚨 Acción al detectar el shake
-                Toast.makeText(this, "¡Shake detectado!", Toast.LENGTH_SHORT).show();
-                // Podés ejecutar cualquier código acá
+                mqttService.publishMessage(MqttService.TOPIC_PERSIANA, "ping");
             }
             lastX = x;
             lastY = y;
@@ -211,10 +206,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     
     private void updateUI(String state, String mode, Integer light) {
-
-            textState.setText(state);
-            textLight.setText(""+light);
-            textMode.setText(mode);
+        textState.setText(state);
+        textLight.setText(""+light);
+        textMode.setText(mode);
 
     }
 }

@@ -26,6 +26,18 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class MqttService extends Service {
+
+    public static final String TOPIC_APP_PERSIANA = "/app_persiana";
+    public static final String TOPIC_PERSIANA = "/persiana";
+    public static final String PAYLOAD_OPEN = "abrir";
+    public static final String PAYLOAD_CLOSE = "cerrar";
+    public static final String PAYLOAD_PAUSE= "pausar";
+    public static final String PAYLOAD_AUTO = "auto";
+    public static final String PAYLOAD_MANUAL = "manual";
+    public static final String MQTT_CONNECTION_STATUS = "MQTT_CONNECTION_STATUS";
+    public static final String MQTT_MESSAGE_RECEIVED = "MQTT_MESSAGE";
+    public static final String MQTT_DISCONNECT = "MQTT_DISCONNECT";
+    public static final String ACTION_PUBLISH = "publish";
     private MqttAndroidClient client;
     public static boolean isRunning = false;
     public static final String CHANNEL_ID = "MQTT_CHANNEL";
@@ -40,7 +52,7 @@ public class MqttService extends Service {
     private final BroadcastReceiver disconnectReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if ("MQTT_DISCONNECT".equals(intent.getAction())) {
+            if (MQTT_DISCONNECT.equals(intent.getAction())) {
                 if (client != null && client.isConnected()) {
                     try {
                         client.disconnect();
@@ -58,7 +70,7 @@ public class MqttService extends Service {
     public void onCreate() {
         super.onCreate();
         isRunning = true;
-        registerReceiver(disconnectReceiver, new IntentFilter("MQTT_DISCONNECT"), RECEIVER_NOT_EXPORTED);
+        registerReceiver(disconnectReceiver, new IntentFilter(MQTT_DISCONNECT), RECEIVER_NOT_EXPORTED);
     }
 
     @Override
@@ -73,7 +85,7 @@ public class MqttService extends Service {
         createNotificationChannel();
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Conexión MQTT activa")
-                .setContentText("Escuchando en /app_persiana")
+                .setContentText("Escuchando en "+ TOPIC_PERSIANA)
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Desconectar", createDisconnectAction())
                 .build();
@@ -112,15 +124,15 @@ public class MqttService extends Service {
             client.connect(options, null, new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
-                    subscribeToTopic("/app_persiana");
-                    Intent successIntent = new Intent("MQTT_CONNECTION_STATUS");
+                    subscribeToTopic(TOPIC_APP_PERSIANA);
+                    Intent successIntent = new Intent(MQTT_CONNECTION_STATUS);
                     successIntent.putExtra("status", "connected");
                     sendBroadcast(successIntent);
                 }
 
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                    Intent failureIntent = new Intent("MQTT_CONNECTION_STATUS");
+                    Intent failureIntent = new Intent(MQTT_CONNECTION_STATUS);
                     failureIntent.putExtra("status", "failed");
                     failureIntent.putExtra("error", exception.getMessage());
                     sendBroadcast(failureIntent);
@@ -178,7 +190,7 @@ public class MqttService extends Service {
     }
 
     private Intent buildIntentMqttMessaje(String topic, String payload) {
-        Intent intent = new Intent("MQTT_MESSAGE");
+        Intent intent = new Intent(MQTT_MESSAGE_RECEIVED);
         intent.putExtra("topic", topic);
 
         try {
@@ -199,7 +211,7 @@ public class MqttService extends Service {
     }
 
     private PendingIntent createDisconnectAction() {
-        Intent intent = new Intent("MQTT_DISCONNECT");
+        Intent intent = new Intent(MQTT_DISCONNECT);
         return PendingIntent.getBroadcast(
                 this,
                 0,

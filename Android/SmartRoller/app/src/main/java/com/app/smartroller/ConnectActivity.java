@@ -79,7 +79,7 @@ public class ConnectActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        registerReceiver(mqttConnectionReceiver, new IntentFilter("MQTT_CONNECTION_STATUS"), RECEIVER_NOT_EXPORTED);
+        registerReceiver(mqttConnectionReceiver, new IntentFilter(MqttService.MQTT_CONNECTION_STATUS), RECEIVER_NOT_EXPORTED);
     }
 
     @Override
