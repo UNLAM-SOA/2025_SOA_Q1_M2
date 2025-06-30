@@ -3,11 +3,16 @@ package com.app.smartroller;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
@@ -32,15 +37,34 @@ public class MqttService extends Service {
         }
     }
 
+    private final BroadcastReceiver disconnectReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if ("MQTT_DISCONNECT".equals(intent.getAction())) {
+                if (client != null && client.isConnected()) {
+                    try {
+                        client.disconnect();
+                    } catch (MqttException e) {
+                        Log.e("MQTT", "Error al desconectar", e);
+                    }
+                }
+                stopForeground(true);
+                stopSelf();
+            }
+        }
+    };
+
     @Override
     public void onCreate() {
         super.onCreate();
         isRunning = true;
+        registerReceiver(disconnectReceiver, new IntentFilter("MQTT_DISCONNECT"), RECEIVER_NOT_EXPORTED);
     }
 
     @Override
     public void onDestroy() {
         isRunning = false;
+        unregisterReceiver(disconnectReceiver);
         super.onDestroy();
     }
 
@@ -51,6 +75,7 @@ public class MqttService extends Service {
                 .setContentTitle("Conexión MQTT activa")
                 .setContentText("Escuchando en /app_persiana")
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Desconectar", createDisconnectAction())
                 .build();
 
         startForeground(1, notification);
@@ -76,13 +101,10 @@ public class MqttService extends Service {
                 options.setUserName(user);
                 options.setPassword(password.toCharArray());
             }
-            Log.d("MQTT", "Intentando conectar a " + broker + ":" + port);
             client.connect(options, null, new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
-                    Log.d("MQTT", "Conectado al broker");
                     subscribeToTopic("/app_persiana");
-
                     Intent successIntent = new Intent("MQTT_CONNECTION_STATUS");
                     successIntent.putExtra("status", "connected");
                     sendBroadcast(successIntent);
@@ -90,8 +112,6 @@ public class MqttService extends Service {
 
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                    Log.e("MQTT", "Error al conectar", exception);
-
                     Intent failureIntent = new Intent("MQTT_CONNECTION_STATUS");
                     failureIntent.putExtra("status", "failed");
                     failureIntent.putExtra("error", exception.getMessage());
@@ -115,19 +135,16 @@ public class MqttService extends Service {
     }
 
     public void publishMessage(String topic, String payload) {
-        if (client == null) {
-            Log.e("MQTT", "El cliente MQTT es null. No se puede publicar.");
+        if (client == null || !client.isConnected()) {
+            Toast.makeText(this, "Debe estar conectado para enviar mensajes", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (!client.isConnected()) {
-            Log.e("MQTT", "El cliente MQTT no está conectado. No se puede publicar.");
-            return;
-        }
+
         try {
             MqttMessage message = new MqttMessage(payload.getBytes());
             message.setQos(1);
             client.publish(topic, message);
-            Log.d("MQTT", "Mensaje publicado en " + topic);
+            Toast.makeText(this, "Mensaje enviado", Toast.LENGTH_SHORT).show();
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -168,10 +185,18 @@ public class MqttService extends Service {
             intent.putExtra("luz", light);
 
         } catch (JSONException e) {
-            Log.e("MQTT", "JSON inválido: " + payload, e);
             intent.putExtra("error", "Formato JSON inválido");
         }
-
         return intent;
+    }
+
+    private PendingIntent createDisconnectAction() {
+        Intent intent = new Intent("MQTT_DISCONNECT");
+        return PendingIntent.getBroadcast(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
     }
 }
