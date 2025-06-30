@@ -1,7 +1,6 @@
 #include <WiFiClientSecure.h>
 #include <WiFi.h>
 #include "PubSubClient.h"
-#include <ArduinoJson.h>
 
 #define LIGHT_SENSOR_PIN 32
 #define MOTOR_FORWARD_PIN 26
@@ -14,7 +13,7 @@
 #define SLEEP_INTERVAL_MS 1000
 #define PRIORITY_LS 1
 #define PRIORITY_LIGHT_SENSOR 2
-#define PRIORITY_CMD 1
+#define PRIORITY 1
 #define TIME_OUT 2000
 #define STACK_SIZE 8192
 #define MAX_EVENTS_QUEUE 6
@@ -162,8 +161,9 @@ void setup()
   eventQueue = xQueueCreate(MAX_EVENTS_QUEUE, sizeof(Event));
   xTaskCreate(lightSensorTask, "Sensor de Luz", STACK_SIZE, NULL, PRIORITY_LIGHT_SENSOR, NULL);
   xTaskCreate(fcTask, "Sensor Final de Carrera", STACK_SIZE, NULL, PRIORITY_LS, NULL);
-  xTaskCreate(cmdTask, "Cmd", STACK_SIZE, NULL, PRIORITY_CMD, NULL);
-  xTaskCreate(mqttTask, "MQTT", STACK_SIZE, NULL, PRIORITY_CMD, NULL);
+  xTaskCreate(cmdTask, "Cmd", STACK_SIZE, NULL, PRIORITY, NULL);
+  xTaskCreate(mqttTask, "MQTT", STACK_SIZE, NULL, PRIORITY, NULL);
+  xTaskCreate(sendStateToMQTTTask, "Send State to MQTT", STACK_SIZE, NULL, PRIORITY, NULL);
 
   // MQTT y WIFI
   wifiConnect();
@@ -415,6 +415,19 @@ void fcTask(void *p)
   }
 }
 
+void sendStateToMQTTTask()
+{
+  TickType_t delayTimeOut = 1000;
+  while (true)
+  {
+    if (client.connected())
+    {
+      client.publish(topicAppPersiana, generatePayload());
+    }
+    vTaskDelay(delayTimeOut);
+  }
+}
+
 void cmdTask(void *p)
 {
   TickType_t delayTimeOut = 500;
@@ -494,9 +507,11 @@ void callback(char *topic, byte *message, unsigned int length)
 
 char *generatePayload()
 {
+  int light = analogRead(LIGHT_SENSOR_PIN);
   String payload = "{";
   payload += "\"estado\": \"" + stateStrings[currentState] + "\", ";
   payload += "\"modo\": \"" + modeStrings[currentConfig] + "\", ";
+  payload += "\"luz\": " + light;
   payload += "}";
   return payload.c_str();
 }
