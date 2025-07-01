@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include "PubSubClient.h"
+#include <ArduinoJson.h>
 
 #define LIGHT_SENSOR_PIN 32
 #define MOTOR_FORWARD_PIN 26
@@ -121,6 +122,7 @@ void cmdTask(void *p);
 void wifiConnect();
 void mqttTask(void *p);
 void sendStateToMQTTTask(void *p);
+void notifyState();
 
 typedef void (*Function)();
 
@@ -419,10 +421,7 @@ void sendStateToMQTTTask(void *p)
   TickType_t delayTimeOut = 1000;
   while (true)
   {
-    if (client.connected())
-    {
-      client.publish(topicAppPersiana, generatePayload());
-    }
+    notifyState();
     vTaskDelay(delayTimeOut);
   }
 }
@@ -501,18 +500,22 @@ void callback(char *topic, byte *message, unsigned int length)
   Cmd cmd = cmdMapper(String(msg));
   cmdActions[cmd]();
   // Publico el estado actual de la persiana
-  client.publish(topicAppPersiana, generatePayload());
+  notifyState();
 }
 
-const char *generatePayload()
+void notifyState()
 {
   int light = analogRead(LIGHT_SENSOR_PIN);
-  static String payload;
-  payload = "";
-  payload += "{";
-  payload += "\"estado\": \"" + stateStrings[currentState] + "\", ";
-  payload += "\"modo\": \"" + modeStrings[currentConfig] + "\", ";
-  payload += "\"luz\": " + light;
-  payload += "}";
-  return payload.c_str();
+  StaticJsonDocument<128> doc;
+  doc["estado"] = stateStrings[currentState];
+  doc["modo"] = modeStrings[currentConfig];
+  doc["luz"] = light;
+
+  char payload[128];
+  serializeJson(doc, payload);
+
+  if (client.connected())
+  {
+    client.publish(topicAppPersiana, payload);
+  }
 }
