@@ -18,7 +18,7 @@
 #define STACK_SIZE 8192
 #define MAX_EVENTS_QUEUE 6
 #define SERIAL_MONITOR 115200
-#define SPEED 150
+#define SPEED 170
 
 // CLIENTE WIFI
 WiFiClientSecure espClient;
@@ -121,6 +121,7 @@ void cmdTask(void *p);
 // FUNCIONES MQTT
 void wifiConnect();
 void mqttTask(void *p);
+void sendStateToMQTTTask(void *p);
 
 typedef void (*Function)();
 
@@ -415,7 +416,7 @@ void fcTask(void *p)
   }
 }
 
-void sendStateToMQTTTask()
+void sendStateToMQTTTask(void *p)
 {
   TickType_t delayTimeOut = 1000;
   while (true)
@@ -505,10 +506,12 @@ void callback(char *topic, byte *message, unsigned int length)
   client.publish(topicAppPersiana, generatePayload());
 }
 
-char *generatePayload()
+const char *generatePayload()
 {
   int light = analogRead(LIGHT_SENSOR_PIN);
-  String payload = "{";
+  static String payload;
+  payload = "";
+  payload += "{";
   payload += "\"estado\": \"" + stateStrings[currentState] + "\", ";
   payload += "\"modo\": \"" + modeStrings[currentConfig] + "\", ";
   payload += "\"luz\": " + light;
