@@ -18,7 +18,8 @@
 #define STACK_SIZE 8192
 #define MAX_EVENTS_QUEUE 6
 #define SERIAL_MONITOR 115200
-#define SPEED 200
+#define SPEED_UP 255
+#define SPEED_DOWN 170
 #define DELAY_10_MS 10 / portTICK_PERIOD_MS
 #define DELAY_200_MS 200 / portTICK_PERIOD_MS
 #define DELAY_500_MS 500 / portTICK_PERIOD_MS
@@ -32,7 +33,7 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 // CONFIG RED
-const char *ssid = "SO Avanzada";
+const char *ssid = "SO Avanzados";
 const char *password = "SOA.2019";
 
 // CONFIG MQTT
@@ -92,7 +93,7 @@ enum Event
 
 // FUNCIONES PARA ACTUALIZAR Y LEER LOS PINES
 void dcMotorStop();
-void dcMotorSpeed();
+void dcMotorSpeed(int speed);
 void dcMotorBackward();
 void dcMotorForward();
 boolean isLigthOn();
@@ -165,7 +166,7 @@ void setup()
   pinMode(LED_PIN, OUTPUT);
 
   dcMotorStop();  // iniciliza motor apagado
-  dcMotorSpeed(); // setea speed
+  //dcMotorSpeed(); // setea speed
 
   eventQueue = xQueueCreate(MAX_EVENTS_QUEUE, sizeof(Event));
   xTaskCreate(lightSensorTask, "Sensor de Luz", STACK_SIZE, NULL, PRIORITY_LIGHT_SENSOR, NULL);
@@ -215,6 +216,7 @@ boolean isLigthOn()
 
 void dcMotorForward()
 {
+  dcMotorSpeed(SPEED_UP);
   digitalWrite(MOTOR_FORWARD_PIN, HIGH);
   digitalWrite(MOTOR_BACKWARD_PIN, LOW);
   digitalWrite(LED_PIN, HIGH);
@@ -222,14 +224,15 @@ void dcMotorForward()
 
 void dcMotorBackward()
 {
+  dcMotorSpeed(SPEED_DOWN);
   digitalWrite(MOTOR_FORWARD_PIN, LOW);
   digitalWrite(MOTOR_BACKWARD_PIN, HIGH);
   digitalWrite(LED_PIN, HIGH);
 }
 
-void dcMotorSpeed()
+void dcMotorSpeed(int speed)
 {
-  analogWrite(MOTOR_SPEED_PIN, SPEED);
+  analogWrite(MOTOR_SPEED_PIN, speed);
 }
 
 void dcMotorStop()
@@ -417,7 +420,7 @@ void fcTask(void *p)
       evt = EVT_FC_START;
       xQueueSend(eventQueue, &evt, TIME_OUT);
     }
-    vTaskDelay(DELAY_200_MS);
+    vTaskDelay(DELAY_10_MS);
   }
 }
 
