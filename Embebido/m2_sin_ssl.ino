@@ -19,13 +19,20 @@
 #define MAX_EVENTS_QUEUE 6
 #define SERIAL_MONITOR 115200
 #define SPEED 200
+#define DELAY_10_MS 10 / portTICK_PERIOD_MS
+#define DELAY_200_MS 200 / portTICK_PERIOD_MS
+#define DELAY_500_MS 500 / portTICK_PERIOD_MS
+#define DELAY_1000_MS 1000 / portTICK_PERIOD_MS
+#define DELAY_5000_MS 5000 / portTICK_PERIOD_MS
+#define DELAY_10000_MS 10000 / portTICK_PERIOD_MS
+
 
 // CLIENTE WIFI
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 // CONFIG RED
-const char *ssid = "SO Avanzados";
+const char *ssid = "SO Avanzada";
 const char *password = "SOA.2019";
 
 // CONFIG MQTT
@@ -376,12 +383,11 @@ void cmdInvalid()
 // TAREAS QUE LEEN SENSORES
 void lightSensorTask(void *p)
 {
-  const TickType_t delayTimeOut = 5000;
   Event evt;
 
   while (true)
   {
-    vTaskDelay(delayTimeOut);
+    vTaskDelay(DELAY_5000_MS);
     if (currentConfig != AUTO)
       continue;
 
@@ -399,7 +405,6 @@ void lightSensorTask(void *p)
 void fcTask(void *p)
 {
   Event evt;
-  TickType_t delayTimeOut = 200;
   while (true)
   {
     if (digitalRead(FC_END_PIN) == HIGH)
@@ -412,23 +417,21 @@ void fcTask(void *p)
       evt = EVT_FC_START;
       xQueueSend(eventQueue, &evt, TIME_OUT);
     }
-    vTaskDelay(delayTimeOut);
+    vTaskDelay(DELAY_200_MS);
   }
 }
 
 void sendStateToMQTTTask(void *p)
 {
-  TickType_t delayTimeOut = 1000;
   while (true)
   {
     notifyState();
-    vTaskDelay(delayTimeOut);
+    vTaskDelay(DELAY_10000_MS);
   }
 }
 
 void cmdTask(void *p)
 {
-  TickType_t delayTimeOut = 500;
   while (true)
   {
     if (Serial.available())
@@ -438,7 +441,7 @@ void cmdTask(void *p)
       Cmd cmd = cmdMapper(console_str);
       cmdActions[cmd]();
     }
-    vTaskDelay(delayTimeOut);
+    vTaskDelay(DELAY_500_MS);
   }
 }
 
@@ -451,7 +454,7 @@ void mqttTask(void *p)
       mqttReconnect();
     }
     client.loop();
-    vTaskDelay(10 / portTICK_PERIOD_MS); // Ejecuta cada 10 ms
+    vTaskDelay(DELAY_10_MS);
   }
 }
 
@@ -462,7 +465,7 @@ void wifiConnect()
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED)
   {
-    vTaskDelay(500 / portTICK_PERIOD_MS);
+    vTaskDelay(DELAY_500_MS);
     Serial.print(".");
   }
   Serial.println(" ==> Conectado.");
@@ -472,17 +475,20 @@ void mqttReconnect()
 {
   while (!client.connected())
   {
-    Serial.println("+ Intentando conexión MQTT...");
-
-    if (client.connect(clientId, user_name, user_pass))
+    
+    if(WiFi.status() == WL_CONNECTED)
     {
-      Serial.printf("==> '%s' conectado\n", clientId);
-      client.subscribe(topic_persiana);
-    }
-    else
-    {
-      Serial.printf("Error, rc= %d. Intentando en 5 segundos\n", client.state());
-      vTaskDelay(5000 / portTICK_PERIOD_MS);
+      Serial.println("+ Intentando conexión MQTT...");
+      if (client.connect(clientId, user_name, user_pass))
+      {
+        Serial.printf("==> '%s' conectado\n", clientId);
+        client.subscribe(topic_persiana);
+      }
+      else
+      {
+        Serial.printf("Error, rc= %d. Intentando en 5 segundos\n", client.state());
+        vTaskDelay(DELAY_5000_MS);
+      }
     }
   }
 }
