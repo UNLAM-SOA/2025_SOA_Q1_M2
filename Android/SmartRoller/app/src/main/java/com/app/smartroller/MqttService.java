@@ -18,7 +18,9 @@ import androidx.core.app.NotificationCompat;
 
 import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
@@ -52,6 +54,7 @@ public class MqttService extends Service {
     private final BroadcastReceiver disconnectReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            isRunning = false;
             if (MQTT_DISCONNECT.equals(intent.getAction())) {
                 if (client != null && client.isConnected()) {
                     try {
@@ -69,7 +72,6 @@ public class MqttService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        isRunning = true;
         registerReceiver(disconnectReceiver, new IntentFilter(MQTT_DISCONNECT), RECEIVER_NOT_EXPORTED);
     }
 
@@ -113,9 +115,26 @@ public class MqttService extends Service {
         try {
             String serverUri = "tcp://" + broker + ":" + port;
             client = new MqttAndroidClient(getApplicationContext(), serverUri, clientId);
+            client.setCallback(new MqttCallback() {
+                @Override
+                public void connectionLost(Throwable cause) {
+                    isRunning = false;
+                    stopForeground(true);
+                    stopSelf();
+                }
+
+                @Override
+                public void messageArrived(String topic, MqttMessage message) {
+                }
+
+                @Override
+                public void deliveryComplete(IMqttDeliveryToken token) {
+
+                }
+            });
+
             MqttConnectOptions options = new MqttConnectOptions();
             options.setCleanSession(true);
-            options.setAutomaticReconnect(true);
 
             if (!user.isEmpty()) {
                 options.setUserName(user);
@@ -124,6 +143,7 @@ public class MqttService extends Service {
             client.connect(options, null, new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
+                    isRunning = true;
                     subscribeToTopic(TOPIC_APP_PERSIANA);
                     Intent successIntent = new Intent(MQTT_CONNECTION_STATUS);
                     successIntent.putExtra("status", "connected");
@@ -136,6 +156,9 @@ public class MqttService extends Service {
                     failureIntent.putExtra("status", "failed");
                     failureIntent.putExtra("error", exception.getMessage());
                     sendBroadcast(failureIntent);
+                    isRunning = false;
+                    stopForeground(true);
+                    stopSelf();
                 }
             });
         } catch (Exception e) {

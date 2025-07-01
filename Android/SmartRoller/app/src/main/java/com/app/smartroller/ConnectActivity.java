@@ -47,6 +47,11 @@ public class ConnectActivity extends AppCompatActivity {
         textStatus = findViewById(R.id.textStatus);
         btnConnect = findViewById(R.id.btnConnect);
 
+        if(MqttService.isRunning){
+            textStatus.setText("Estado: Conectado.");
+            textStatus.setTextColor(getResources().getColor(android.R.color.holo_green_light));
+        }
+
         btnConnect.setOnClickListener(new View.OnClickListener() {
             @SuppressLint("SetTextI18n")
             @Override
