@@ -1,4 +1,3 @@
-#include <WiFiClientSecure.h>
 #include <WiFi.h>
 #include "PubSubClient.h"
 
@@ -18,10 +17,10 @@
 #define STACK_SIZE 8192
 #define MAX_EVENTS_QUEUE 6
 #define SERIAL_MONITOR 115200
-#define SPEED 170
+#define SPEED 200
 
 // CLIENTE WIFI
-WiFiClientSecure espClient;
+WiFiClient espClient;
 PubSubClient client(espClient);
 
 // CONFIG RED
@@ -168,7 +167,6 @@ void setup()
 
   // MQTT y WIFI
   wifiConnect();
-  espClient.setInsecure();
 
   client.setServer(mqtt_server, port);
   client.setCallback(callback);
