@@ -1,12 +1,16 @@
 package com.app.smartroller;
+
 import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.*;
+
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -19,16 +23,12 @@ public class ConnectActivity extends AppCompatActivity {
     private BroadcastReceiver mqttConnectionReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            String status = intent.getStringExtra("status");
-
-            if ("connected".equals(status)) {
-                Intent mainIntent = new Intent(ConnectActivity.this, MainActivity.class);
-                startActivity(mainIntent);
-                finish();
-            } else if ("failed".equals(status)) {
-                String error = intent.getStringExtra("error");
-                Toast.makeText(ConnectActivity.this, "Error al conectar: " + error, Toast.LENGTH_LONG).show();
-                textStatus.setText("Estado: Desconectado");
+            MqttStatus status = intent.getParcelableExtra(MqttStatus.PAYLOAD_NAME);
+            if (status.isConnected())
+                goBackToMainActivity();
+            else {
+                toast(R.string.connection_error + status.error);
+                textStatus.setText(R.string.disconnected_message);
                 textStatus.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
             }
         }
@@ -37,6 +37,7 @@ public class ConnectActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_connect);
 
         inputBroker = findViewById(R.id.inputBroker);
@@ -47,8 +48,8 @@ public class ConnectActivity extends AppCompatActivity {
         textStatus = findViewById(R.id.textStatus);
         btnConnect = findViewById(R.id.btnConnect);
 
-        if(MqttService.isRunning){
-            textStatus.setText("Estado: Conectado.");
+        if (MqttService.isRunning) {
+            textStatus.setText(R.string.connected_message);
             textStatus.setTextColor(getResources().getColor(android.R.color.holo_green_light));
         }
 
@@ -56,27 +57,7 @@ public class ConnectActivity extends AppCompatActivity {
             @SuppressLint("SetTextI18n")
             @Override
             public void onClick(View v) {
-                String broker = inputBroker.getText().toString().trim();
-                String port = inputPort.getText().toString().trim();
-                String clientId = inputClientId.getText().toString().trim();
-                String user = inputUser.getText().toString().trim();
-                String password = inputPassword.getText().toString().trim();
-
-                if (broker.isEmpty() || port.isEmpty() || clientId.isEmpty()) {
-                    Toast.makeText(ConnectActivity.this, "Broker, puerto y clientId son obligatorios", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                Intent serviceIntent = new Intent(ConnectActivity.this, MqttService.class);
-                serviceIntent.putExtra("broker", broker);
-                serviceIntent.putExtra("port", port);
-                serviceIntent.putExtra("clientId", clientId);
-                serviceIntent.putExtra("user", user);
-                serviceIntent.putExtra("password", password);
-                ContextCompat.startForegroundService(ConnectActivity.this, serviceIntent);
-
-                textStatus.setText("Estado: Conectando...");
-                textStatus.setTextColor(getResources().getColor(android.R.color.holo_orange_dark));
+                connectToMqtt();
             }
         });
     }
@@ -84,12 +65,48 @@ public class ConnectActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        registerReceiver(mqttConnectionReceiver, new IntentFilter(MqttService.MQTT_CONNECTION_STATUS), RECEIVER_NOT_EXPORTED);
+        registerReceiver(mqttConnectionReceiver, new IntentFilter(MqttService.MQTT_CONNECTION_STATUS), RECEIVER_EXPORTED);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         unregisterReceiver(mqttConnectionReceiver);
+    }
+
+    private void connectToMqtt() {
+        MqttConnectionParams params = new MqttConnectionParams(
+                inputBroker.getText().toString(),
+                inputPort.getText().toString(),
+                inputClientId.getText().toString(),
+                inputUser.getText().toString(),
+                inputPassword.getText().toString()
+        );
+
+        if (params.broker.isEmpty() || params.port.isEmpty() || params.clientId.isEmpty()) {
+            toast(getString(R.string.params_mandatory));
+            return;
+        }
+
+        textStatus.setText(R.string.connecting_message);
+        textStatus.setTextColor(getResources().getColor(android.R.color.holo_orange_dark));
+
+        startMqttService(params);
+    }
+
+    private void startMqttService(MqttConnectionParams params) {
+        Intent serviceIntent = new Intent(ConnectActivity.this, MqttService.class);
+        serviceIntent.putExtra(MqttConnectionParams.NAME, params);
+        ContextCompat.startForegroundService(ConnectActivity.this, serviceIntent);
+    }
+
+    private void toast(String string) {
+        Toast.makeText(this, string, Toast.LENGTH_SHORT).show();
+    }
+
+    private void goBackToMainActivity() {
+        Intent mainIntent = new Intent(ConnectActivity.this, MainActivity.class);
+        startActivity(mainIntent);
+        finish();
     }
 }

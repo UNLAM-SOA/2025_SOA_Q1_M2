@@ -32,6 +32,27 @@ public class ScheduleActivity extends AppCompatActivity {
     private Spinner spinnerAction;
     private ListView listView;
 
+    private class Alarm {
+        public int hour = -1;
+        public int minute = -1;
+        public String action = "";
+        public Alarm(int hour, int minute, String action) {
+            this.hour = hour;
+            this.minute = minute;
+            this.action = action;
+        }
+        public Alarm(String alarmItem) {
+            var parts = alarmItem.split(" - ");
+            if (parts.length == 2) {
+                var timeParts = parts[0].split(":");
+                action = parts[1].toLowerCase();
+                if (timeParts.length == 2) {
+                    hour = Integer.parseInt(timeParts[0]);
+                    minute = Integer.parseInt(timeParts[1]);
+                }
+            }
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,44 +64,10 @@ public class ScheduleActivity extends AppCompatActivity {
         for (String item : savedSet) {
             scheduleStrings.add(item);
 
-            // Reparse the time and action to reschedule the alarm
-            String[] parts = item.split(" - ");
-            if (parts.length == 2) {
-                String[] timeParts = parts[0].split(":");
-                String action = parts[1].toLowerCase();
-                if (timeParts.length == 2) {
-                    int hour = Integer.parseInt(timeParts[0]);
-                    int minute = Integer.parseInt(timeParts[1]);
-                    scheduleAlarm(hour, minute, action);
-                }
-            }
+            scheduleAlarm(new Alarm(item));
         }
 
-
-        setContentView(R.layout.activity_schedule);
-
-        spinnerAction = findViewById(R.id.spinnerAction);
-        listView = findViewById(R.id.listViewSchedules);
-
-        ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(this,
-                R.array.actions_array, android.R.layout.simple_spinner_item);
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerAction.setAdapter(spinnerAdapter);
-
-        listAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, scheduleStrings);
-        listView.setAdapter(listAdapter);
-
-        Button btnPickTime = findViewById(R.id.btnPickTime);
-        btnPickTime.setOnClickListener(v -> showTimePicker());
-
-        Button btnAdd = findViewById(R.id.btnAddSchedule);
-        btnAdd.setOnClickListener(v -> addSchedule());
-
-        listView.setOnItemLongClickListener((parent, view, position, id) -> {
-            scheduleStrings.remove(position);
-            listAdapter.notifyDataSetChanged();
-            return true;
-        });
+        configureFields();
     }
 
     private void showTimePicker() {
@@ -89,7 +76,7 @@ public class ScheduleActivity extends AppCompatActivity {
                 (view, hourOfDay, minute) -> {
                     selectedHour = hourOfDay;
                     selectedMinute = minute;
-                    Toast.makeText(this, "Time selected: " + String.format("%02d:%02d", hourOfDay, minute), Toast.LENGTH_SHORT).show();
+                    toast(getString(R.string.time_selected) + String.format("%02d:%02d", hourOfDay, minute));
                 },
                 now.get(Calendar.HOUR_OF_DAY),
                 now.get(Calendar.MINUTE),
@@ -100,33 +87,34 @@ public class ScheduleActivity extends AppCompatActivity {
 
     private void addSchedule() {
         if (selectedHour == -1 || selectedMinute == -1) {
-            Toast.makeText(this, "Pick a time first", Toast.LENGTH_SHORT).show();
+            toast(getString(R.string.time_required));
             return;
         }
 
         String action = spinnerAction.getSelectedItem().toString().toLowerCase();
+
         String entry = String.format("%02d:%02d - %s", selectedHour, selectedMinute, action);
 
-        scheduleAlarm(selectedHour, selectedMinute, action);
+        scheduleAlarm(new Alarm(selectedHour, selectedMinute, action));
 
         scheduleStrings.add(entry);
         listAdapter.notifyDataSetChanged();
         saveSchedulesToPreferences();
     }
 
-    private void scheduleAlarm(int hour, int minute, String action) {
+    private void scheduleAlarm(Alarm alarm) {
         AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
         Intent intent = new Intent(this, MqttAlarmReceiver.class);
-        intent.putExtra("hour", hour);
-        intent.putExtra("minute", minute);
-        intent.putExtra("action", action);
+        intent.putExtra("hour", alarm.hour);
+        intent.putExtra("minute", alarm.minute);
+        intent.putExtra("action", alarm.action);
 
-        int requestCode = hour * 100 + minute;
+        int requestCode = alarm.hour * 100 + alarm.minute;
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.HOUR_OF_DAY, hour);
-        calendar.set(Calendar.MINUTE, minute);
+        calendar.set(Calendar.HOUR_OF_DAY, alarm.hour);
+        calendar.set(Calendar.MINUTE, alarm.minute);
         calendar.set(Calendar.SECOND, 0);
 
         if (calendar.before(Calendar.getInstance())) {
@@ -149,4 +137,33 @@ public class ScheduleActivity extends AppCompatActivity {
         editor.apply();
     }
 
+    private void configureFields() {
+        setContentView(R.layout.activity_schedule);
+
+        spinnerAction = findViewById(R.id.spinnerAction);
+        listView = findViewById(R.id.listViewSchedules);
+
+        ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(this, R.array.actions_array, android.R.layout.simple_spinner_item);
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerAction.setAdapter(spinnerAdapter);
+
+        Button btnPickTime = findViewById(R.id.btnPickTime);
+        btnPickTime.setOnClickListener(v -> showTimePicker());
+
+        listAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, scheduleStrings);
+        listView.setAdapter(listAdapter);
+
+        Button btnAdd = findViewById(R.id.btnAddSchedule);
+        btnAdd.setOnClickListener(v -> addSchedule());
+
+        listView.setOnItemLongClickListener((parent, view, position, id) -> {
+            scheduleStrings.remove(position);
+            listAdapter.notifyDataSetChanged();
+            return true;
+        });
+    }
+
+    private void toast(String string) {
+        Toast.makeText(this, string, Toast.LENGTH_SHORT).show();
+    }
 }

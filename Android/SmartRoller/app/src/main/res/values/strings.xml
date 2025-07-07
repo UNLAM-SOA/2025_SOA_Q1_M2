@@ -5,4 +5,17 @@
         <item>Abrir</item>
         <item>Cerrar</item>
     </string-array>
+    <string name="mqtt_not_connected">Servicio MQTT no activo. Volviendo a conectar.</string>
+    <string name="active_connection_title">Conexión MQTT activa</string>
+    <string name="disconnected_message">Estado: Desconectado</string>
+    <string name="connecting_message">Estado: Conectando…</string>
+    <string name="connected_message">Estado: Conectado</string>
+    <string name="connection_error">Error al conectar: </string>
+    <string name="params_mandatory">Broker, puerto y clientId son obligatorios</string>
+    <string name="message_sent">Mensaje enviado</string>
+    <string name="not_connected_warning">Debe estar conectado para enviar mensajes</string>
+    <string name="listening_on">Escuchando en </string>
+    <string name="disconnect_btn">Desconectar</string>
+    <string name="time_selected">Time selected: </string>
+    <string name="time_required"></string>
 </resources>

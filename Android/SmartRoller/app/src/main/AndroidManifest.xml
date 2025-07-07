@@ -50,7 +50,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <receiver android:name=".MqttAlarmReceiver" android:exported="true" />
+        <receiver android:name=".MqttAlarmReceiver" android:exported="false" />
     </application>
 
 </manifest>
