@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private static final int SHAKE_THRESHOLD = 800;
     private MqttService mqttService;
     private boolean isBound = false;
-    private final ESP32 esp32 = new ESP32();
+    private ESP32 esp32 = new ESP32();
     private final ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -51,9 +51,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private final BroadcastReceiver mqttReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            esp32.state = intent.getStringExtra(ServicePayload.FIELD_STATE);
-            esp32.mode = intent.getStringExtra(ServicePayload.FIELD_MODE);
-            esp32.light = intent.getIntExtra(ServicePayload.FIELD_LIGHT, -1);
+            esp32 = intent.getParcelableExtra(ESP32.NAME);
 
             updateUI();
         }
@@ -130,7 +128,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void updateUI() {
         textState.setText(esp32.state);
-        textLight.setText(esp32.light);
+        textLight.setText(String.valueOf(esp32.light));
         textMode.setText(esp32.mode);
     }
 
