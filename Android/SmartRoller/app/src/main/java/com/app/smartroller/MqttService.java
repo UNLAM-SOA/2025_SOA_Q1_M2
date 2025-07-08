@@ -101,17 +101,19 @@ public class MqttService extends Service {
         createNotificationChannel();
         setNotificationInForeground();
 
-        MqttConnectionParams params = intent.getParcelableExtra(MqttConnectionParams.NAME);
-        String action = intent.getStringExtra("action");
-        if ("publish".equals(action)) {
-            String topic = intent.getStringExtra("topic");
-            String payload = intent.getStringExtra("payload");
-            publishMessage(topic, payload);
+        MqttConnectionParams mqttParamsPayload = intent.getParcelableExtra(MqttConnectionParams.NAME);
+        if (mqttParamsPayload != null) {
+            connectToMqtt(mqttParamsPayload);
+            return START_STICKY;
+        }
+
+        AlarmPayload alarmPayload = intent.getParcelableExtra(AlarmPayload.Name);
+        if (alarmPayload != null) {
+            publishMessage(alarmPayload.topic, alarmPayload.payload);
             return START_NOT_STICKY;
         }
 
-        connectToMqtt(params);
-        return START_STICKY;
+        return START_NOT_STICKY;
     }
 
     private void connectToMqtt(MqttConnectionParams params) {

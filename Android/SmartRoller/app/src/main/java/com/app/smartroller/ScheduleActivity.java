@@ -3,7 +3,6 @@ package com.app.smartroller;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.TimePickerDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -20,8 +19,6 @@ import java.util.Calendar;
 import java.util.HashSet;
 import java.util.Set;
 
-import java.util.ArrayList;
-
 public class ScheduleActivity extends AppCompatActivity {
     private int selectedHour = -1;
     private int selectedMinute = -1;
@@ -31,7 +28,9 @@ public class ScheduleActivity extends AppCompatActivity {
 
     private Spinner spinnerAction;
     private ListView listView;
-
+    private final String SHARED_PREFERENCES = "schedules";
+    private final String PREFERENCES_SET = "list";
+    public static final String ACTION_NAME = "action";
     private class Alarm {
         public int hour = -1;
         public int minute = -1;
@@ -57,16 +56,7 @@ public class ScheduleActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        SharedPreferences prefs = getSharedPreferences("schedules", MODE_PRIVATE);
-        Set<String> savedSet = prefs.getStringSet("list", new HashSet<>());
-
-        for (String item : savedSet) {
-            scheduleStrings.add(item);
-
-            scheduleAlarm(new Alarm(item));
-        }
-
+        loadSchedulesSaved();
         configureFields();
     }
 
@@ -110,7 +100,7 @@ public class ScheduleActivity extends AppCompatActivity {
         intent.putExtra("action", alarm.action);
 
         int requestCode = alarm.hour * 100 + alarm.minute;
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        var pendingIntent = PendingIntent.getBroadcast(this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Calendar calendar = Calendar.getInstance();
         calendar.set(Calendar.HOUR_OF_DAY, alarm.hour);
@@ -133,7 +123,7 @@ public class ScheduleActivity extends AppCompatActivity {
         SharedPreferences prefs = getSharedPreferences("schedules", MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
         Set<String> set = new HashSet<>(scheduleStrings);
-        editor.putStringSet("list", set);
+        editor.putStringSet(PREFERENCES_SET, set);
         editor.apply();
     }
 
@@ -165,5 +155,15 @@ public class ScheduleActivity extends AppCompatActivity {
 
     private void toast(String string) {
         Toast.makeText(this, string, Toast.LENGTH_SHORT).show();
+    }
+
+    private void loadSchedulesSaved() {
+        SharedPreferences prefs = getSharedPreferences(SHARED_PREFERENCES, MODE_PRIVATE);
+        Set<String> savedSet = prefs.getStringSet(PREFERENCES_SET, new HashSet<>());
+
+        for (String item : savedSet) {
+            scheduleStrings.add(item);
+            scheduleAlarm(new Alarm(item));
+        }
     }
 }

@@ -8,15 +8,12 @@ public class MqttAlarmReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        String action = intent.getStringExtra("action");
-
-        // Preparamos un Intent para decirle al servicio que publique
         Intent mqttIntent = new Intent(context, MqttService.class);
-        mqttIntent.putExtra("action", MqttService.ACTION_PUBLISH);
-        mqttIntent.putExtra("topic", MqttService.TOPIC_PERSIANA);
-        mqttIntent.putExtra("payload", action);
 
-        // Iniciamos el servicio para publicar
+        String action = intent.getStringExtra(ScheduleActivity.ACTION_NAME);
+        var payload = new AlarmPayload(MqttService.ACTION_PUBLISH, MqttService.TOPIC_PERSIANA, action);
+        mqttIntent.putExtra(AlarmPayload.Name, payload);
+
         context.startService(mqttIntent);
     }
 }
