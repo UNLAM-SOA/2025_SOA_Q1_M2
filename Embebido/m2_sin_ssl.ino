@@ -27,7 +27,6 @@
 #define DELAY_5000_MS 5000 / portTICK_PERIOD_MS
 #define DELAY_10000_MS 10000 / portTICK_PERIOD_MS
 
-
 // CLIENTE WIFI
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -96,6 +95,7 @@ void dcMotorStop();
 void dcMotorSpeed(int speed);
 void dcMotorBackward();
 void dcMotorForward();
+boolean isFcPressed(int fcPin);
 boolean isLigthOn();
 
 // FUNCIONES PARA LOS EVENTOS
@@ -135,15 +135,15 @@ void notifyState();
 typedef void (*Function)();
 
 Function transitionMatrix[STATE_QUANTITY][EVENT_QUANTITY] = {
-    //                  EVT_GO_UP   EVT_GO_DOWN   EVT_PAUSE         EVT_FC_END    EVT_FC_START  EVT_MGO_UP  EVT_MGO_DOWN  EVT_CHANGE_MODE_MANUAL    EVT_CHANGE_MODE_AUTO
-    /* STOPPED */       {goUp,      goDown,       noChange,         noChange,     noChange,     mGoUp,      mGoDown,      changeModeManual,         changeModeAuto},
-    /* FORWARDING */    {noChange,  goDown,       changeModeManual, pauseMotor,   noChange,     noChange,   noChange,     changeModeManual,         noChange},
-    /* BACKWARDING */   {goUp,      noChange,     changeModeManual, noChange,     pauseMotor,   noChange,   noChange,     changeModeManual,         noChange},
-    /* MFORWARDING */   {noChange,  noChange,     pauseMotor,       pauseMotor,   noChange,     noChange,   mGoDown,      noChange,                 changeModeAuto},
-    /* MBACKWARDING */  {noChange,  noChange,     pauseMotor,       noChange,     pauseMotor,   mGoUp,      noChange,     noChange,                 changeModeAuto}};
+    //                  EVT_GO_UP EVT_GO_DOWN   EVT_PAUSE         EVT_FC_END    EVT_FC_START  EVT_MGO_UP  EVT_MGO_DOWN  EVT_CHANGE_MODE_MANUAL    EVT_CHANGE_MODE_AUTO
+    /* STOPPED */ {goUp, goDown, noChange, noChange, noChange, mGoUp, mGoDown, changeModeManual, changeModeAuto},
+    /* FORWARDING */ {noChange, goDown, changeModeManual, pauseMotor, noChange, noChange, noChange, changeModeManual, noChange},
+    /* BACKWARDING */ {goUp, noChange, changeModeManual, noChange, pauseMotor, noChange, noChange, changeModeManual, noChange},
+    /* MFORWARDING */ {noChange, noChange, pauseMotor, pauseMotor, noChange, noChange, mGoDown, noChange, changeModeAuto},
+    /* MBACKWARDING */ {noChange, noChange, pauseMotor, noChange, pauseMotor, mGoUp, noChange, noChange, changeModeAuto}};
 
 //                                   OPEN     CLOSE      STOP      MODE_MANUAL  MODE_AUTO   INVALID_CMD
-Function cmdActions[CMD_QUANTITY] = {cmdGoUp, cmdGoDown, cmdPause, cmdManual,   cmdAuto,    cmdInvalid};
+Function cmdActions[CMD_QUANTITY] = {cmdGoUp, cmdGoDown, cmdPause, cmdManual, cmdAuto, cmdInvalid};
 
 String stateStrings[STATE_QUANTITY] = {"DETENIDA", "ABIERTA", "CERRADA", "ABIERTA", "CERRADA"};
 String modeStrings[MODE_QUANTITY] = {"AUTO", "MANUAL"};
@@ -165,8 +165,7 @@ void setup()
   pinMode(FC_END_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
 
-  dcMotorStop();  // iniciliza motor apagado
-  //dcMotorSpeed(); // setea speed
+  dcMotorStop();
 
   eventQueue = xQueueCreate(MAX_EVENTS_QUEUE, sizeof(Event));
   xTaskCreate(lightSensorTask, "Sensor de Luz", STACK_SIZE, NULL, PRIORITY_LIGHT_SENSOR, NULL);
@@ -196,13 +195,7 @@ void getEvent()
 {
   Event newEvent;
   if ((xQueueReceive(eventQueue, &newEvent, portMAX_DELAY)) == pdPASS)
-  {
-    if (currentEvent == EVT_FC_END && newEvent == EVT_GO_UP)
-      return;
-    if (currentEvent == EVT_FC_START && newEvent == EVT_GO_DOWN)
-      return;
     currentEvent = newEvent;
-  }
 }
 
 // FUNCIONES PARA ACTUALIZAR Y LEER LOS PINES
@@ -240,27 +233,40 @@ void dcMotorStop()
   digitalWrite(LED_PIN, LOW);
 }
 
+boolean isFcPressed(int fcPin)
+{
+  return digitalRead(fcPin) == HIGH;
+}
+
 // FUNCIONES PARA LOS EVENTOS
 void goUp()
 {
+  if (isFcPressed(FC_END_PIN))
+    return;
   currentState = FORWARDING;
   dcMotorForward();
 }
 
 void goDown()
 {
+  if (isFcPressed(FC_START_PIN))
+    return;
   currentState = BACKWARDING;
   dcMotorBackward();
 }
 
 void mGoUp()
 {
+  if (isFcPressed(FC_END_PIN))
+    return;
   currentState = MFORWARDING;
   dcMotorForward();
 }
 
 void mGoDown()
 {
+  if (isFcPressed(FC_START_PIN))
+    return;
   currentState = MBACKWARDING;
   dcMotorBackward();
 }
@@ -488,8 +494,8 @@ void mqttReconnect()
 {
   while (!client.connected())
   {
-    
-    if(WiFi.status() == WL_CONNECTED)
+
+    if (WiFi.status() == WL_CONNECTED)
     {
       Serial.println("+ Intentando conexión MQTT...");
       if (client.connect(clientId, user_name, user_pass))
