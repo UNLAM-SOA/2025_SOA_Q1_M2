@@ -135,15 +135,15 @@ void notifyState();
 typedef void (*Function)();
 
 Function transitionMatrix[STATE_QUANTITY][EVENT_QUANTITY] = {
-    //                  EVT_GO_UP EVT_GO_DOWN   EVT_PAUSE           EVT_FC_END    EVT_FC_START EVT_MGO_UP  EVT_MGO_DOWN  EVT_CHANGE_MODE_MANUAL EVT_CHANGE_MODE_AUTO
-    /* STOPPED */ {goUp, goDown, noChange, noChange, noChange, mGoUp, mGoDown, changeModeManual, changeModeAuto},
-    /* FORWARDING */ {noChange, goDown, changeModeManual, pauseMotor, noChange, noChange, noChange, changeModeManual, noChange},
-    /* BACKWARDING */ {goUp, noChange, changeModeManual, noChange, pauseMotor, noChange, noChange, changeModeManual, noChange},
-    /* MFORWARDING */ {noChange, noChange, pauseMotor, pauseMotor, noChange, noChange, mGoDown, noChange, changeModeAuto},
-    /* MBACKWARDING */ {noChange, noChange, pauseMotor, noChange, pauseMotor, mGoUp, noChange, noChange, changeModeAuto}};
+    //                  EVT_GO_UP   EVT_GO_DOWN   EVT_PAUSE         EVT_FC_END    EVT_FC_START  EVT_MGO_UP  EVT_MGO_DOWN  EVT_CHANGE_MODE_MANUAL    EVT_CHANGE_MODE_AUTO
+    /* STOPPED */       {goUp,      goDown,       noChange,         noChange,     noChange,     mGoUp,      mGoDown,      changeModeManual,         changeModeAuto},
+    /* FORWARDING */    {noChange,  goDown,       changeModeManual, pauseMotor,   noChange,     noChange,   noChange,     changeModeManual,         noChange},
+    /* BACKWARDING */   {goUp,      noChange,     changeModeManual, noChange,     pauseMotor,   noChange,   noChange,     changeModeManual,         noChange},
+    /* MFORWARDING */   {noChange,  noChange,     pauseMotor,       pauseMotor,   noChange,     noChange,   mGoDown,      noChange,                 changeModeAuto},
+    /* MBACKWARDING */  {noChange,  noChange,     pauseMotor,       noChange,     pauseMotor,   mGoUp,      noChange,     noChange,                 changeModeAuto}};
 
-//                                   OPEN     CLOSE      STOP      MODE_MANUAL MODE_AUTO INVALID_CMD
-Function cmdActions[CMD_QUANTITY] = {cmdGoUp, cmdGoDown, cmdPause, cmdManual, cmdAuto, cmdInvalid};
+//                                   OPEN     CLOSE      STOP      MODE_MANUAL  MODE_AUTO   INVALID_CMD
+Function cmdActions[CMD_QUANTITY] = {cmdGoUp, cmdGoDown, cmdPause, cmdManual,   cmdAuto,    cmdInvalid};
 
 String stateStrings[STATE_QUANTITY] = {"DETENIDA", "ABIERTA", "CERRADA", "ABIERTA", "CERRADA"};
 String modeStrings[MODE_QUANTITY] = {"AUTO", "MANUAL"};
@@ -174,9 +174,7 @@ void setup()
   xTaskCreate(cmdTask, "Cmd", STACK_SIZE, NULL, PRIORITY, NULL);
   xTaskCreate(mqttTask, "MQTT", STACK_SIZE, NULL, PRIORITY, NULL);
   xTaskCreate(sendStateToMQTTTask, "Send State to MQTT", STACK_SIZE, NULL, PRIORITY, NULL);
-
-  // MQTT y WIFI
-  wifiConnect();
+  xTaskCreate(wifiTask, "WiFi", STACK_SIZE, NULL, PRIORITY, NULL);
 
   client.setServer(mqtt_server, port);
   client.setCallback(callback);
@@ -443,6 +441,18 @@ void cmdTask(void *p)
       console_str.trim();
       Cmd cmd = cmdMapper(console_str);
       cmdActions[cmd]();
+    }
+    vTaskDelay(DELAY_500_MS);
+  }
+}
+
+void wifiTask(void *p)
+{
+  while (true)
+  {
+    if (WiFi.status() != WL_CONNECTED)
+    {
+      wifiConnect();
     }
     vTaskDelay(DELAY_500_MS);
   }
