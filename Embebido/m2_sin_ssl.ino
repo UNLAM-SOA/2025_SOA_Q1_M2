@@ -316,16 +316,8 @@ void cmdGoUp()
   if (currentConfig == MANUAL)
   {
     Event evt;
-    if (digitalRead(FC_END_PIN) == LOW)
-    {
-      evt = EVT_MGO_UP;
-      xQueueSend(eventQueue, &evt, TIME_OUT);
-      Serial.println("Abriendo cortina");
-    }
-    else
-    {
-      Serial.println("La cortina ya esta completamente abierta");
-    }
+    evt = EVT_MGO_UP;
+    xQueueSend(eventQueue, &evt, TIME_OUT);
   }
 }
 
@@ -334,16 +326,8 @@ void cmdGoDown()
   if (currentConfig == MANUAL)
   {
     Event evt;
-    if (digitalRead(FC_START_PIN) == LOW)
-    {
-      evt = EVT_MGO_DOWN;
-      xQueueSend(eventQueue, &evt, TIME_OUT);
-      Serial.println("Cerrando cortina");
-    }
-    else
-    {
-      Serial.println("La cortina ya esta completamente cerrada");
-    }
+    evt = EVT_MGO_DOWN;
+    xQueueSend(eventQueue, &evt, TIME_OUT);
   }
 }
 
@@ -351,7 +335,6 @@ void cmdPause()
 {
   Event evt = EVT_PAUSE;
   xQueueSend(eventQueue, &evt, TIME_OUT);
-  Serial.println("La cortina se a detenido");
 }
 
 void cmdManual()
@@ -414,12 +397,12 @@ void fcTask(void *p)
   Event evt;
   while (true)
   {
-    if (digitalRead(FC_END_PIN) == HIGH)
+    if (isFcPressed(FC_END_PIN))
     {
       evt = EVT_FC_END;
       xQueueSend(eventQueue, &evt, TIME_OUT);
     }
-    if (digitalRead(FC_START_PIN) == HIGH)
+    if (isFcPressed(FC_START_PIN))
     {
       evt = EVT_FC_START;
       xQueueSend(eventQueue, &evt, TIME_OUT);
