@@ -150,7 +150,7 @@ String modeStrings[MODE_QUANTITY] = {"AUTO", "MANUAL"};
 
 State currentState = STOPPED;
 Event currentEvent = EVT_PAUSE;
-Mode currentConfig = MANUAL;
+Mode currentConfig = AUTO;
 QueueHandle_t eventQueue;
 
 void setup()
