@@ -27,7 +27,6 @@
 #define DELAY_5000_MS 5000 / portTICK_PERIOD_MS
 #define DELAY_10000_MS 10000 / portTICK_PERIOD_MS
 
-
 // CLIENTE WIFI
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -96,6 +95,7 @@ void dcMotorStop();
 void dcMotorSpeed(int speed);
 void dcMotorBackward();
 void dcMotorForward();
+boolean isFcPressed(int fcPin);
 boolean isLigthOn();
 
 // FUNCIONES PARA LOS EVENTOS
@@ -135,14 +135,14 @@ void notifyState();
 typedef void (*Function)();
 
 Function transitionMatrix[STATE_QUANTITY][EVENT_QUANTITY] = {
-    //                  EVT_GO_UP EVT_GO_DOWN   EVT_PAUSE           EVT_FC_END    EVT_FC_START EVT_MGO_UP  EVT_MGO_DOWN  EVT_CHANGE_MODE_MANUAL EVT_CHANGE_MODE_AUTO
+    //                  EVT_GO_UP EVT_GO_DOWN   EVT_PAUSE         EVT_FC_END    EVT_FC_START  EVT_MGO_UP  EVT_MGO_DOWN  EVT_CHANGE_MODE_MANUAL    EVT_CHANGE_MODE_AUTO
     /* STOPPED */ {goUp, goDown, noChange, noChange, noChange, mGoUp, mGoDown, changeModeManual, changeModeAuto},
     /* FORWARDING */ {noChange, goDown, changeModeManual, pauseMotor, noChange, noChange, noChange, changeModeManual, noChange},
     /* BACKWARDING */ {goUp, noChange, changeModeManual, noChange, pauseMotor, noChange, noChange, changeModeManual, noChange},
     /* MFORWARDING */ {noChange, noChange, pauseMotor, pauseMotor, noChange, noChange, mGoDown, noChange, changeModeAuto},
     /* MBACKWARDING */ {noChange, noChange, pauseMotor, noChange, pauseMotor, mGoUp, noChange, noChange, changeModeAuto}};
 
-//                                   OPEN     CLOSE      STOP      MODE_MANUAL MODE_AUTO INVALID_CMD
+//                                   OPEN     CLOSE      STOP      MODE_MANUAL  MODE_AUTO   INVALID_CMD
 Function cmdActions[CMD_QUANTITY] = {cmdGoUp, cmdGoDown, cmdPause, cmdManual, cmdAuto, cmdInvalid};
 
 String stateStrings[STATE_QUANTITY] = {"DETENIDA", "ABIERTA", "CERRADA", "ABIERTA", "CERRADA"};
@@ -150,7 +150,7 @@ String modeStrings[MODE_QUANTITY] = {"AUTO", "MANUAL"};
 
 State currentState = STOPPED;
 Event currentEvent = EVT_PAUSE;
-Mode currentConfig = MANUAL;
+Mode currentConfig = AUTO;
 QueueHandle_t eventQueue;
 
 void setup()
@@ -165,8 +165,7 @@ void setup()
   pinMode(FC_END_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
 
-  dcMotorStop();  // iniciliza motor apagado
-  //dcMotorSpeed(); // setea speed
+  dcMotorStop();
 
   eventQueue = xQueueCreate(MAX_EVENTS_QUEUE, sizeof(Event));
   xTaskCreate(lightSensorTask, "Sensor de Luz", STACK_SIZE, NULL, PRIORITY_LIGHT_SENSOR, NULL);
@@ -174,9 +173,7 @@ void setup()
   xTaskCreate(cmdTask, "Cmd", STACK_SIZE, NULL, PRIORITY, NULL);
   xTaskCreate(mqttTask, "MQTT", STACK_SIZE, NULL, PRIORITY, NULL);
   xTaskCreate(sendStateToMQTTTask, "Send State to MQTT", STACK_SIZE, NULL, PRIORITY, NULL);
-
-  // MQTT y WIFI
-  wifiConnect();
+  xTaskCreate(wifiTask, "WiFi", STACK_SIZE, NULL, PRIORITY, NULL);
 
   client.setServer(mqtt_server, port);
   client.setCallback(callback);
@@ -198,13 +195,7 @@ void getEvent()
 {
   Event newEvent;
   if ((xQueueReceive(eventQueue, &newEvent, portMAX_DELAY)) == pdPASS)
-  {
-    if (currentEvent == EVT_FC_END && newEvent == EVT_GO_UP)
-      return;
-    if (currentEvent == EVT_FC_START && newEvent == EVT_GO_DOWN)
-      return;
     currentEvent = newEvent;
-  }
 }
 
 // FUNCIONES PARA ACTUALIZAR Y LEER LOS PINES
@@ -242,27 +233,40 @@ void dcMotorStop()
   digitalWrite(LED_PIN, LOW);
 }
 
+boolean isFcPressed(int fcPin)
+{
+  return digitalRead(fcPin) == HIGH;
+}
+
 // FUNCIONES PARA LOS EVENTOS
 void goUp()
 {
+  if (isFcPressed(FC_END_PIN))
+    return;
   currentState = FORWARDING;
   dcMotorForward();
 }
 
 void goDown()
 {
+  if (isFcPressed(FC_START_PIN))
+    return;
   currentState = BACKWARDING;
   dcMotorBackward();
 }
 
 void mGoUp()
 {
+  if (isFcPressed(FC_END_PIN))
+    return;
   currentState = MFORWARDING;
   dcMotorForward();
 }
 
 void mGoDown()
 {
+  if (isFcPressed(FC_START_PIN))
+    return;
   currentState = MBACKWARDING;
   dcMotorBackward();
 }
@@ -312,16 +316,8 @@ void cmdGoUp()
   if (currentConfig == MANUAL)
   {
     Event evt;
-    if (digitalRead(FC_END_PIN) == LOW)
-    {
-      evt = EVT_MGO_UP;
-      xQueueSend(eventQueue, &evt, TIME_OUT);
-      Serial.println("Abriendo cortina");
-    }
-    else
-    {
-      Serial.println("La cortina ya esta completamente abierta");
-    }
+    evt = EVT_MGO_UP;
+    xQueueSend(eventQueue, &evt, TIME_OUT);
   }
 }
 
@@ -330,16 +326,8 @@ void cmdGoDown()
   if (currentConfig == MANUAL)
   {
     Event evt;
-    if (digitalRead(FC_START_PIN) == LOW)
-    {
-      evt = EVT_MGO_DOWN;
-      xQueueSend(eventQueue, &evt, TIME_OUT);
-      Serial.println("Cerrando cortina");
-    }
-    else
-    {
-      Serial.println("La cortina ya esta completamente cerrada");
-    }
+    evt = EVT_MGO_DOWN;
+    xQueueSend(eventQueue, &evt, TIME_OUT);
   }
 }
 
@@ -347,7 +335,6 @@ void cmdPause()
 {
   Event evt = EVT_PAUSE;
   xQueueSend(eventQueue, &evt, TIME_OUT);
-  Serial.println("La cortina se a detenido");
 }
 
 void cmdManual()
@@ -410,12 +397,12 @@ void fcTask(void *p)
   Event evt;
   while (true)
   {
-    if (digitalRead(FC_END_PIN) == HIGH)
+    if (isFcPressed(FC_END_PIN))
     {
       evt = EVT_FC_END;
       xQueueSend(eventQueue, &evt, TIME_OUT);
     }
-    if (digitalRead(FC_START_PIN) == HIGH)
+    if (isFcPressed(FC_START_PIN))
     {
       evt = EVT_FC_START;
       xQueueSend(eventQueue, &evt, TIME_OUT);
@@ -443,6 +430,18 @@ void cmdTask(void *p)
       console_str.trim();
       Cmd cmd = cmdMapper(console_str);
       cmdActions[cmd]();
+    }
+    vTaskDelay(DELAY_500_MS);
+  }
+}
+
+void wifiTask(void *p)
+{
+  while (true)
+  {
+    if (WiFi.status() != WL_CONNECTED)
+    {
+      wifiConnect();
     }
     vTaskDelay(DELAY_500_MS);
   }
@@ -478,8 +477,8 @@ void mqttReconnect()
 {
   while (!client.connected())
   {
-    
-    if(WiFi.status() == WL_CONNECTED)
+
+    if (WiFi.status() == WL_CONNECTED)
     {
       Serial.println("+ Intentando conexión MQTT...");
       if (client.connect(clientId, user_name, user_pass))
